@@ -318,7 +318,7 @@ Real-time dynamic pricing platform built with Go microservices, Kafka, Redis, Po
 ## Quick start
 
 ```bash
-git clone https://github.com/<username>/real-time-dynamic-pricing-platform.git
+git clone https://github.com/mardvsh/Real-time-dynamic-pricing-platform.git
 cd "Real-Time Dynamic Pricing Platform"
 docker compose up --build -d
 ```
