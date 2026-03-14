@@ -1,0 +1,22 @@
+### Health checks
+GET http://localhost:8081/health
+
+### List products with dynamic prices
+GET http://localhost:8081/products
+
+### Get product
+GET http://localhost:8081/products/1
+
+### Send user event
+POST http://localhost:8082/events
+Content-Type: application/json
+
+{
+  "user_id": "u-123",
+  "event": "view_product",
+  "product_id": "1",
+  "timestamp": "2026-03-14T10:10:00Z"
+}
+
+### Query current price
+GET http://localhost:8083/price/1

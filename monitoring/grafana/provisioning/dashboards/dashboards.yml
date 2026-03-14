@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: dynamic-pricing-dashboards
+    orgId: 1
+    folder: DynamicPricing
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

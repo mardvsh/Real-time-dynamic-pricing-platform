@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Details</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --surface: #fff;
+      --line: #d2d2d7;
+      --accent: #0071e3;
+      --success: #11835b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(10px);
+      background: rgba(245, 245, 247, 0.84);
+      border-bottom: 1px solid rgba(210, 210, 215, 0.6);
+    }
+    .topbar-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 12px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar-right { display: flex; gap: 8px; align-items: center; }
+    .brand { font-size: 17px; font-weight: 600; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 22px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid #ececf1;
+      border-radius: 28px;
+      overflow: hidden;
+    }
+    .hero {
+      width: 100%;
+      height: 260px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg,#f8f8fa,#ececf1);
+      font-size: 110px;
+    }
+    .content { padding: 24px; }
+    .title { margin: 0; font-size: 38px; letter-spacing: -0.7px; }
+    .cat { margin-top: 6px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .4px; }
+    .price { margin-top: 14px; color: var(--success); font-size: 34px; font-weight: 700; letter-spacing: -0.8px; }
+    .base { color: var(--muted); margin-top: 4px; font-size: 14px; }
+    .actions { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+    button, a.btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .primary { background: var(--accent); color:#fff; }
+    .secondary { background:#ececf1; color: var(--text); }
+    .lang-wrap { display: flex; align-items: center; gap: 8px; }
+    .lang-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8e8e93;
+      letter-spacing: .3px;
+      transition: color .2s ease;
+    }
+    .lang-label.active { color: #1d1d1f; }
+    .lang-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      display: inline-block;
+    }
+    .lang-switch input { display: none; }
+    .lang-slider {
+      position: absolute;
+      inset: 0;
+      background: #d2d2d7;
+      border-radius: 999px;
+      transition: background .2s ease;
+      cursor: pointer;
+    }
+    .lang-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .lang-switch input:checked + .lang-slider {
+      background: #34c759;
+    }
+    .lang-switch input:checked + .lang-slider::before {
+      transform: translateX(20px);
+    }
+    .help {
+      margin-top: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" id="brandTitle">Магазин динамических цен</div>
+      <div class="topbar-right">
+        <div class="lang-wrap">
+          <span id="langRuLabel" class="lang-label">RU</span>
+          <label class="lang-switch" title="Language switch">
+            <input type="checkbox" id="langSwitch" onchange="toggleLangSwitch()" />
+            <span class="lang-slider"></span>
+          </label>
+          <span id="langEnLabel" class="lang-label">EN</span>
+        </div>
+        <a class="btn secondary" href="/" id="backToCatalog">← Каталог</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div id="card" class="card"></div>
+    <div class="help" id="helpText">
+      <b>Как тестировать:</b>
+      1) Нажмите «Симулировать 10 просмотров», 2) подождите 1–2 секунды, 3) нажмите «Обновить цену».
+      Пересчёт идёт через Kafka → Pricing → Redis.
+    </div>
+  </main>
+
+  <script>
+    const productEmoji = {
+      'PlayStation 5': '🎮',
+      'AirPods Pro': '🎧',
+      'MacBook Air': '💻',
+      'iPhone 16': '📱',
+      'Nintendo Switch OLED': '🕹️',
+      'iPad Air': '📘',
+      'Apple Watch SE': '⌚',
+      'HomePod mini': '🔊',
+      'Magic Keyboard': '⌨️',
+      'Studio Display': '🖥️',
+      'Galaxy S24': '📱',
+      'Galaxy Buds': '🎧',
+      'Galaxy Tab S9': '📒',
+      'Pixel 9': '📱',
+      'Sony WH-1000XM5': '🎧',
+      'Dell XPS 13': '💻',
+      'Lenovo ThinkPad X1': '💼',
+      'ASUS ROG Ally': '🎮',
+      'DJI Mini Drone': '🚁',
+      'GoPro Hero': '📷',
+      'Kindle Paperwhite': '📚',
+      'Nintendo Switch OLED Neon': '🕹️',
+    };
+    let currentLang = localStorage.getItem('ui_lang') || 'ru';
+
+    const i18n = {
+      ru: {
+        brand: 'Магазин динамических цен',
+        back: '← Каталог',
+        help: '<b>Как тестировать:</b> 1) Нажмите «Симулировать 10 просмотров», 2) подождите 1–2 секунды, 3) нажмите «Обновить цену». Пересчёт идёт через Kafka → Pricing → Redis.',
+        notFound: 'Товар не найден',
+        category: 'Категория',
+        basePrice: 'Базовая цена',
+        source: 'Источник цены',
+        simulate: 'Симулировать 10 просмотров',
+        refresh: 'Обновить цену',
+        backCatalog: 'Назад к каталогу',
+        error: 'Ошибка',
+      },
+      en: {
+        brand: 'Dynamic Pricing Store',
+        back: '← Catalog',
+        help: '<b>How to test:</b> 1) Click “Simulate 10 views”, 2) wait 1–2 seconds, 3) click “Refresh price”. Recalculation goes through Kafka → Pricing → Redis.',
+        notFound: 'Product not found',
+        category: 'Category',
+        basePrice: 'Base price',
+        source: 'Price source',
+        simulate: 'Simulate 10 views',
+        refresh: 'Refresh price',
+        backCatalog: 'Back to catalog',
+        error: 'Error',
+      }
+    };
+
+    function t(key) {
+      return i18n[currentLang][key];
+    }
+
+    function applyI18n() {
+      document.getElementById('brandTitle').textContent = t('brand');
+      document.getElementById('backToCatalog').textContent = t('back');
+      document.getElementById('helpText').innerHTML = t('help');
+
+      const isEn = currentLang === 'en';
+      document.getElementById('langSwitch').checked = isEn;
+      document.getElementById('langRuLabel').classList.toggle('active', !isEn);
+      document.getElementById('langEnLabel').classList.toggle('active', isEn);
+    }
+
+    function toggleLangSwitch() {
+      currentLang = document.getElementById('langSwitch').checked ? 'en' : 'ru';
+      localStorage.setItem('ui_lang', currentLang);
+      applyI18n();
+      loadProduct();
+    }
+
+    const id = new URLSearchParams(location.search).get('id') || '1';
+
+    async function loadProduct() {
+      const pRes = await fetch(`/api/products/${id}`);
+      if (!pRes.ok) throw new Error(t('notFound'));
+      const p = await pRes.json();
+
+      const priceRes = await fetch(`/api/price/${id}`);
+      const pr = priceRes.ok ? await priceRes.json() : { price: p.base_price, source: 'fallback' };
+
+      const emoji = productEmoji[p.name] || '🛍️';
+      document.getElementById('card').innerHTML = `
+        <div class="hero">${emoji}</div>
+        <div class="content">
+          <h2 class="title">${p.name}</h2>
+          <div class="cat">${t('category')}: ${p.category}</div>
+          <div class="price">$${Number(pr.price).toFixed(2)}</div>
+          <div class="base">${t('basePrice')}: $${Number(p.base_price).toFixed(2)}</div>
+          <div class="base">${t('source')}: ${pr.source || 'unknown'}</div>
+          <div class="actions">
+            <button class="primary" onclick="simulate()">${t('simulate')}</button>
+            <button class="secondary" onclick="loadProduct()">${t('refresh')}</button>
+            <a class="btn secondary" href="/">${t('backCatalog')}</a>
+          </div>
+        </div>
+      `;
+    }
+
+    async function simulate() {
+      for (let i = 0; i < 10; i++) {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 'detail-user-' + Math.floor(Math.random() * 100000),
+            event: 'view_product',
+            product_id: id,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      }
+      setTimeout(loadProduct, 1200);
+    }
+
+    applyI18n();
+    loadProduct().catch((e) => {
+      document.getElementById('card').innerHTML = `<div class="content" style="color:#dc2626">${t('error')}: ${e.message}</div>`;
+    });
+  </script>
+</body>
+</html>

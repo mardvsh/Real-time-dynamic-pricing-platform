@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Pricing Store</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --surface: #ffffff;
+      --line: #d2d2d7;
+      --accent: #0071e3;
+      --success: #11835b;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+      background: rgba(245, 245, 247, 0.84);
+      border-bottom: 1px solid rgba(210, 210, 215, 0.6);
+    }
+    .topbar-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 12px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .nav-links { display: flex; gap: 14px; align-items: center; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .lang-wrap { display: flex; align-items: center; gap: 8px; }
+    .lang-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8e8e93;
+      letter-spacing: .3px;
+      transition: color .2s ease;
+    }
+    .lang-label.active { color: #1d1d1f; }
+    .lang-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      display: inline-block;
+    }
+    .lang-switch input { display: none; }
+    .lang-slider {
+      position: absolute;
+      inset: 0;
+      background: #d2d2d7;
+      border-radius: 999px;
+      transition: background .2s ease;
+      cursor: pointer;
+    }
+    .lang-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .lang-switch input:checked + .lang-slider {
+      background: #34c759;
+    }
+    .lang-switch input:checked + .lang-slider::before {
+      transform: translateX(20px);
+    }
+    .container { max-width: 1240px; margin: 0 auto; padding: 20px 22px 40px; }
+    .hero {
+      background: linear-gradient(180deg, #ffffff, #f8f8fa);
+      border: 1px solid #ececf1;
+      border-radius: 28px;
+      text-align: center;
+      padding: 54px 28px;
+      margin: 8px 0 22px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 62px);
+      letter-spacing: -1.2px;
+      line-height: 1.02;
+    }
+    .hero p {
+      margin: 14px auto 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+    .actions { margin: 20px 0 10px; display: flex; justify-content: center; }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    select {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 11px 16px;
+      min-width: 210px;
+      outline: none;
+    }
+    .primary {
+      color: #fff;
+      background: var(--accent);
+      transition: background .2s ease;
+    }
+    .primary:hover { background: #0062c3; }
+    .hint {
+      text-align: center;
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .error {
+      text-align: center;
+      color: #c72b2b;
+      font-weight: 600;
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid #ececf1;
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 245px;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+    }
+    .thumb {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: #f2f2f4;
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      margin-bottom: 14px;
+    }
+    .name {
+      margin: 0;
+      text-align: center;
+      font-size: 17px;
+      letter-spacing: -0.2px;
+      min-height: 44px;
+    }
+    .cat {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .price {
+      margin-top: 14px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--success);
+      letter-spacing: -0.3px;
+    }
+    .base {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .details {
+      margin-top: auto;
+      padding-top: 14px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .monitoring {
+      margin-top: 20px;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .monitoring a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" id="brandTitle">Магазин динамических цен</div>
+      <div class="nav-links">
+        <a href="http://localhost:9090" target="_blank">Prometheus</a>
+        <a href="http://localhost:3000" target="_blank">Grafana</a>
+        <a href="http://localhost:5601" target="_blank">Kibana</a>
+        <div class="lang-wrap">
+          <span id="langRuLabel" class="lang-label">RU</span>
+          <label class="lang-switch" title="Language switch">
+            <input type="checkbox" id="langSwitch" onchange="toggleLangSwitch()" />
+            <span class="lang-slider"></span>
+          </label>
+          <span id="langEnLabel" class="lang-label">EN</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <section class="hero">
+      <h1 id="heroTitle">Смарт‑цены в реальном времени.</h1>
+      <p id="heroSubtitle">
+        Минималистичная витрина с динамическим прайсингом: открывайте товар,
+        симулируйте спрос на его странице и наблюдайте, как цена меняется по правилам спроса.
+      </p>
+      <div class="actions">
+        <div class="toolbar">
+          <button class="primary" onclick="loadProducts()" id="refreshBtn">Обновить каталог</button>
+          <select id="sortSelect" onchange="applySortAndRender()">
+            <option value="name_asc">Сортировка: название (A → Я)</option>
+            <option value="name_desc">Сортировка: название (Я → A)</option>
+            <option value="price_asc">Сортировка: цена (дешевле → дороже)</option>
+            <option value="price_desc">Сортировка: цена (дороже → дешевле)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div id="hint" class="hint">Загружаем товары…</div>
+    <div id="error" class="error"></div>
+    <div id="products" class="grid"></div>
+
+    <div class="monitoring">
+      <span id="monitoringLabel">Мониторинг:</span>
+      <a href="http://localhost:9090" target="_blank">Prometheus</a>
+      <a href="http://localhost:3000" target="_blank">Grafana</a>
+      <a href="http://localhost:5601" target="_blank">Kibana</a>
+    </div>
+  </main>
+
+  <script>
+    const productEmoji = {
+      'PlayStation 5': '🎮',
+      'AirPods Pro': '🎧',
+      'MacBook Air': '💻',
+      'iPhone 16': '📱',
+      'Nintendo Switch OLED': '🕹️',
+      'iPad Air': '📘',
+      'Apple Watch SE': '⌚',
+      'HomePod mini': '🔊',
+      'Magic Keyboard': '⌨️',
+      'Studio Display': '🖥️',
+      'Galaxy S24': '📱',
+      'Galaxy Buds': '🎧',
+      'Galaxy Tab S9': '📒',
+      'Pixel 9': '📱',
+      'Sony WH-1000XM5': '🎧',
+      'Dell XPS 13': '💻',
+      'Lenovo ThinkPad X1': '💼',
+      'ASUS ROG Ally': '🎮',
+      'DJI Mini Drone': '🚁',
+      'GoPro Hero': '📷',
+      'Kindle Paperwhite': '📚',
+      'Nintendo Switch OLED Neon': '🕹️',
+    };
+    let productsState = [];
+    let currentLang = localStorage.getItem('ui_lang') || 'ru';
+
+    const i18n = {
+      ru: {
+        brand: 'Магазин динамических цен',
+        heroTitle: 'Смарт‑цены в реальном времени.',
+        heroSubtitle: 'Минималистичная витрина с динамическим прайсингом: открывайте товар, симулируйте спрос на его странице и наблюдайте, как цена меняется по правилам спроса.',
+        refresh: 'Обновить каталог',
+        monitoring: 'Мониторинг:',
+        loading: 'Загружаем товары…',
+        loadFailed: 'Не удалось получить товары',
+        error: 'Ошибка: ',
+        loaded: (n) => `Загружено товаров: ${n}. Обновлено: ${new Date().toLocaleTimeString()}`,
+        category: 'Категория',
+        basePrice: 'Базовая цена',
+        openProduct: 'Открыть страницу товара',
+        sortNameAsc: 'Сортировка: название (A → Я)',
+        sortNameDesc: 'Сортировка: название (Я → A)',
+        sortPriceAsc: 'Сортировка: цена (дешевле → дороже)',
+        sortPriceDesc: 'Сортировка: цена (дороже → дешевле)',
+      },
+      en: {
+        brand: 'Dynamic Pricing Store',
+        heroTitle: 'Smart pricing in real time.',
+        heroSubtitle: 'A clean storefront with dynamic pricing: open a product page, simulate demand, and watch prices change according to demand rules.',
+        refresh: 'Refresh catalog',
+        monitoring: 'Monitoring:',
+        loading: 'Loading products…',
+        loadFailed: 'Failed to load products',
+        error: 'Error: ',
+        loaded: (n) => `Products loaded: ${n}. Updated: ${new Date().toLocaleTimeString()}`,
+        category: 'Category',
+        basePrice: 'Base price',
+        openProduct: 'Open product page',
+        sortNameAsc: 'Sort: name (A → Z)',
+        sortNameDesc: 'Sort: name (Z → A)',
+        sortPriceAsc: 'Sort: price (low → high)',
+        sortPriceDesc: 'Sort: price (high → low)',
+      }
+    };
+
+    function t(key) {
+      return i18n[currentLang][key];
+    }
+
+    function applyI18n() {
+      document.getElementById('brandTitle').textContent = t('brand');
+      document.getElementById('heroTitle').textContent = t('heroTitle');
+      document.getElementById('heroSubtitle').textContent = t('heroSubtitle');
+      document.getElementById('refreshBtn').textContent = t('refresh');
+      document.getElementById('monitoringLabel').textContent = t('monitoring');
+      document.getElementById('hint').textContent = t('loading');
+
+      const isEn = currentLang === 'en';
+      document.getElementById('langSwitch').checked = isEn;
+      document.getElementById('langRuLabel').classList.toggle('active', !isEn);
+      document.getElementById('langEnLabel').classList.toggle('active', isEn);
+
+      const select = document.getElementById('sortSelect');
+      select.options[0].text = t('sortNameAsc');
+      select.options[1].text = t('sortNameDesc');
+      select.options[2].text = t('sortPriceAsc');
+      select.options[3].text = t('sortPriceDesc');
+    }
+
+    function toggleLangSwitch() {
+      currentLang = document.getElementById('langSwitch').checked ? 'en' : 'ru';
+      localStorage.setItem('ui_lang', currentLang);
+      applyI18n();
+      applySortAndRender();
+    }
+
+    function emojiFor(product) {
+      return productEmoji[product.name] || '🛍️';
+    }
+
+    function card(product) {
+      const dynamic = Number(product.dynamic_price || product.base_price || 0);
+      const base = Number(product.base_price || 0);
+      const html = `
+        <div class="card">
+          <div class="thumb">${emojiFor(product)}</div>
+          <div class="content">
+            <h3 class="name">${product.name}</h3>
+            <div class="cat">${t('category')}: ${product.category}</div>
+            <div class="price">$${dynamic.toFixed(2)}</div>
+            <div class="base">${t('basePrice')}: $${base.toFixed(2)}</div>
+            <a class="details" href="/product.html?id=${product.id}">${t('openProduct')}</a>
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    function sortedProducts(items, mode) {
+      const data = [...items];
+      switch (mode) {
+        case 'name_desc':
+          data.sort((a, b) => String(b.name).localeCompare(String(a.name), 'ru'));
+          break;
+        case 'price_asc':
+          data.sort((a, b) => Number(a.dynamic_price ?? a.base_price) - Number(b.dynamic_price ?? b.base_price));
+          break;
+        case 'price_desc':
+          data.sort((a, b) => Number(b.dynamic_price ?? b.base_price) - Number(a.dynamic_price ?? a.base_price));
+          break;
+        case 'name_asc':
+        default:
+          data.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'));
+          break;
+      }
+      return data;
+    }
+
+    function applySortAndRender() {
+      const mode = document.getElementById('sortSelect').value;
+      const view = sortedProducts(productsState, mode);
+      const html = view.map((p) => card(p)).join('');
+      document.getElementById('products').innerHTML = html;
+    }
+
+    async function loadProducts() {
+      document.getElementById('error').textContent = '';
+      try {
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error(t('loadFailed'));
+        productsState = await res.json();
+        applySortAndRender();
+        document.getElementById('hint').textContent = t('loaded')(productsState.length);
+      } catch (e) {
+        document.getElementById('error').textContent = t('error') + e.message;
+      }
+    }
+
+    applyI18n();
+    loadProducts();
+  </script>
+</body>
+</html>

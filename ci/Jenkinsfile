@@ -1,0 +1,56 @@
+pipeline {
+  agent any
+
+  environment {
+    REGISTRY = 'your-registry/dynamic-pricing'
+    TAG = "${env.BUILD_NUMBER}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh 'go mod tidy'
+        sh 'go build ./...'
+      }
+    }
+
+    stage('Test') {
+      steps {
+        sh 'go test ./... -v'
+      }
+    }
+
+    stage('Build Images') {
+      steps {
+        sh 'docker build -f docker/Dockerfile.catalog -t ${REGISTRY}/catalog-service:${TAG} .'
+        sh 'docker build -f docker/Dockerfile.behavior -t ${REGISTRY}/behavior-service:${TAG} .'
+        sh 'docker build -f docker/Dockerfile.pricing -t ${REGISTRY}/pricing-service:${TAG} .'
+        sh 'docker build -f docker/Dockerfile.analytics -t ${REGISTRY}/analytics-service:${TAG} .'
+      }
+    }
+
+    stage('Push Images') {
+      steps {
+        sh 'docker push ${REGISTRY}/catalog-service:${TAG}'
+        sh 'docker push ${REGISTRY}/behavior-service:${TAG}'
+        sh 'docker push ${REGISTRY}/pricing-service:${TAG}'
+        sh 'docker push ${REGISTRY}/analytics-service:${TAG}'
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh 'kubectl apply -f deploy/k8s/namespace.yaml'
+        sh 'kubectl apply -f deploy/k8s/infra.yaml'
+        sh 'kubectl apply -f deploy/k8s/apps.yaml'
+        sh 'kubectl apply -f deploy/k8s/gateway.yaml'
+      }
+    }
+  }
+}

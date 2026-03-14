@@ -1,0 +1,206 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      cub kafka-ready -b kafka:9092 1 40 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic user-events --replication-factor 1 --partitions 3 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic price-recalculation --replication-factor 1 --partitions 3 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic price-updates --replication-factor 1 --partitions 3 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic analytics-events --replication-factor 1 --partitions 3
+      "
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dynamic_pricing
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/migrations:/docker-entrypoint-initdb.d
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.catalog
+    environment:
+      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/dynamic_pricing?sslmode=disable
+      REDIS_ADDR: redis:6379
+      LISTEN_ADDR: :8081
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+
+  behavior-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.behavior
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      KAFKA_BROKERS: kafka:9092
+      LISTEN_ADDR: :8082
+    depends_on:
+      - mongo
+      - kafka
+      - kafka-init
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+
+  pricing-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.pricing
+    environment:
+      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/dynamic_pricing?sslmode=disable
+      REDIS_ADDR: redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      KAFKA_BROKERS: kafka:9092
+      LISTEN_ADDR: :8083
+      PRICING_MIN_MULTIPLIER: "0.70"
+      PRICING_MAX_MULTIPLIER: "1.50"
+      PRICING_COOLING_INTERVAL: "15s"
+      PRICING_COOLING_STEP_PCT: "0.01"
+      PRICING_DYNAMIC_TTL: "30s"
+    depends_on:
+      - postgres
+      - redis
+      - mongo
+      - kafka
+      - kafka-init
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.analytics
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      KAFKA_BROKERS: kafka:9092
+      LISTEN_ADDR: :8084
+    depends_on:
+      - mongo
+      - kafka
+      - kafka-init
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+
+  frontend:
+    image: nginx:1.27-alpine
+    depends_on:
+      - catalog-service
+      - behavior-service
+      - pricing-service
+    volumes:
+      - ./ui:/usr/share/nginx/html:ro
+      - ./ui/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["obs"]
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    profiles: ["obs"]
+    depends_on:
+      - prometheus
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    profiles: ["elk"]
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+    ports:
+      - "9200:9200"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    profiles: ["elk"]
+    depends_on:
+      - elasticsearch
+    environment:
+      xpack.monitoring.enabled: "false"
+    volumes:
+      - ./infra/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "5044:5044"
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.0
+    profiles: ["elk"]
+    user: root
+    depends_on:
+      - logstash
+    command: ["filebeat", "-e", "-strict.perms=false"]
+    volumes:
+      - ./infra/elk/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    profiles: ["elk"]
+    depends_on:
+      - elasticsearch
+      - logstash
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"

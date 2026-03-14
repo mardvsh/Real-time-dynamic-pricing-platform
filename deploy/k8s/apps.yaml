@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: dynamic-pricing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: your-registry/dynamic-pricing/catalog-service:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: POSTGRES_DSN
+              value: postgres://postgres:postgres@postgres:5432/dynamic_pricing?sslmode=disable
+            - name: REDIS_ADDR
+              value: redis:6379
+            - name: LISTEN_ADDR
+              value: :8081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: dynamic-pricing
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: behavior-service
+  namespace: dynamic-pricing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: behavior-service
+  template:
+    metadata:
+      labels:
+        app: behavior-service
+    spec:
+      containers:
+        - name: behavior-service
+          image: your-registry/dynamic-pricing/behavior-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: MONGO_URI
+              value: mongodb://mongo:27017
+            - name: KAFKA_BROKERS
+              value: kafka:9092
+            - name: LISTEN_ADDR
+              value: :8082
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: behavior-service
+  namespace: dynamic-pricing
+spec:
+  selector:
+    app: behavior-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pricing-service
+  namespace: dynamic-pricing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pricing-service
+  template:
+    metadata:
+      labels:
+        app: pricing-service
+    spec:
+      containers:
+        - name: pricing-service
+          image: your-registry/dynamic-pricing/pricing-service:latest
+          ports:
+            - containerPort: 8083
+          env:
+            - name: POSTGRES_DSN
+              value: postgres://postgres:postgres@postgres:5432/dynamic_pricing?sslmode=disable
+            - name: REDIS_ADDR
+              value: redis:6379
+            - name: MONGO_URI
+              value: mongodb://mongo:27017
+            - name: KAFKA_BROKERS
+              value: kafka:9092
+            - name: LISTEN_ADDR
+              value: :8083
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing-service
+  namespace: dynamic-pricing
+spec:
+  selector:
+    app: pricing-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: dynamic-pricing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - name: analytics-service
+          image: your-registry/dynamic-pricing/analytics-service:latest
+          ports:
+            - containerPort: 8084
+          env:
+            - name: MONGO_URI
+              value: mongodb://mongo:27017
+            - name: KAFKA_BROKERS
+              value: kafka:9092
+            - name: LISTEN_ADDR
+              value: :8084
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: dynamic-pricing
+spec:
+  selector:
+    app: analytics-service
+  ports:
+    - port: 8084
+      targetPort: 8084
