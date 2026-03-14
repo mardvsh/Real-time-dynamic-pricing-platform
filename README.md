@@ -18,8 +18,6 @@
 
 ![Monitoring](docs/screenshots/monitoring.png)
 
-> Можно заменить эти placeholder-изображения на реальные скрины, сохранив их в папку `docs/screenshots/`.
-
 ## Что внутри
 
 - Go микросервисы: `catalog-service`, `behavior-service`, `pricing-service`, `analytics-service`
@@ -47,7 +45,7 @@ docker compose version
 ## Запуск с нуля (если скачали с GitHub)
 
 ```bash
-git clone https://github.com/mardvsh/real-time-dynamic-pricing-platform.git
+git clone https://github.com/mardvsh/Real-time-dynamic-pricing-platform.git
 cd "Real-Time Dynamic Pricing Platform"
 docker compose up --build -d
 ```
